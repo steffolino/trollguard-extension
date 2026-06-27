@@ -14,6 +14,7 @@ const PLATFORMS: PlatformPlugin[] = [
 ];
 
 const commentRegistry = new Map<string, CommentCandidate>();
+const resultCache = new Map<string, CommentSummary>();
 
 function getActivePlatform(): PlatformPlugin {
   const url = new URL(window.location.href);
@@ -52,27 +53,45 @@ function attachButton(comment: CommentCandidate): void {
 function scan(): void {
   const platform = getActivePlatform();
   const comments = platform.findComments();
-  console.log(`[TrollGuard] ${platform.id}: ${comments.length} comment(s) detected`);
-  comments.forEach(attachButton);
+  for (const comment of comments) {
+    attachButton(comment);
+    if (!resultCache.has(comment.id)) {
+      void analyzeComment(comment).then((result) => {
+        resultCache.set(comment.id, {
+          id: comment.id,
+          text: comment.text.slice(0, 150),
+          author: comment.author,
+          result,
+        });
+      });
+    }
+  }
+  if (comments.length > 0) {
+    console.log(
+      `[TrollGuard] ${platform.id}: ${comments.length} visible, ${resultCache.size} cached`,
+    );
+  }
 }
 
 async function scanAndAnalyze(): Promise<CommentSummary[]> {
   const platform = getActivePlatform();
   const comments = platform.findComments();
-  console.log(`[TrollGuard] ${platform.id}: analyzing ${comments.length} comment(s)`);
   comments.forEach(attachButton);
 
-  return Promise.all(
-    comments.map(async (comment): Promise<CommentSummary> => {
+  const uncached = comments.filter((c) => !resultCache.has(c.id));
+  await Promise.all(
+    uncached.map(async (comment) => {
       const result = await analyzeComment(comment);
-      return {
+      resultCache.set(comment.id, {
         id: comment.id,
         text: comment.text.slice(0, 150),
         author: comment.author,
         result,
-      };
+      });
     }),
   );
+
+  return [...resultCache.values()];
 }
 
 function scrollToComment(commentId: string): void {
@@ -110,16 +129,32 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   return undefined;
 });
 
+function observeShadowRoots(onMutation: () => void): void {
+  // Shadow DOM mutations (e.g. MDR/Engagently lazy-loading comments) are invisible
+  // to a document.body MutationObserver — attach a separate observer to each shadow root.
+  document.querySelectorAll<HTMLElement>('*').forEach((el) => {
+    if (el.shadowRoot) {
+      const obs = new MutationObserver(onMutation);
+      obs.observe(el.shadowRoot, { childList: true, subtree: true });
+    }
+  });
+}
+
 function init(): void {
   scan();
 
   let debounceTimer: ReturnType<typeof setTimeout> | undefined;
-  const observer = new MutationObserver(() => {
+  const onMutation = (): void => {
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(scan, 400);
+  };
+
+  new MutationObserver(onMutation).observe(document.body, {
+    childList: true,
+    subtree: true,
   });
 
-  observer.observe(document.body, { childList: true, subtree: true });
+  observeShadowRoots(onMutation);
 }
 
 if (document.readyState === 'loading') {

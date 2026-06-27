@@ -34,7 +34,7 @@ function renderResults(results: CommentSummary[], tabId: number): void {
   if (results.length === 0) {
     countEl.textContent = '';
     container.innerHTML =
-      '<div class="empty">No comments detected.<br>If comments exist, try scrolling them into view first, then scan again.</div>';
+      '<div class="empty">No comments detected yet.<br>Scroll the page so comments appear, then click Scan again.</div>';
     return;
   }
 
@@ -42,7 +42,8 @@ function renderResults(results: CommentSummary[], tabId: number): void {
 
   if (flagged.length === 0) {
     container.innerHTML =
-      '<div class="empty">No potentially problematic content detected in the visible comments.</div>';
+      '<div class="empty">No potentially problematic content detected.<br><br>' +
+      '<span style="color:#334155">Scroll the page to load more comments, then click Scan again.</span></div>';
     return;
   }
 
