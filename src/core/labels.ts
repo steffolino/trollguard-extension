@@ -1,3 +1,16 @@
+export interface AnalysisLabelResult {
+  label: CommentLabel;
+  confidence: number;
+  rationale: string;
+  evidence: string[];
+}
+
+export interface AnalysisResult {
+  commentId: string;
+  labels: AnalysisLabelResult[];
+  suggestedResponse?: string;
+}
+
 export type CommentLabel =
   | 'not_problematic'
   | 'toxicity'

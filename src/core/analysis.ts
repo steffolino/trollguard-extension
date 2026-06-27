@@ -1,18 +1,9 @@
 import type { CommentCandidate } from './comment';
 import type { CommentLabel } from './labels';
+import type { AnalysisLabelResult, AnalysisResult } from './labels';
+import type { RemoteAnalyzer } from './remote';
 
-export interface AnalysisLabelResult {
-  label: CommentLabel;
-  confidence: number;
-  rationale: string;
-  evidence: string[];
-}
-
-export interface AnalysisResult {
-  commentId: string;
-  labels: AnalysisLabelResult[];
-  suggestedResponse?: string;
-}
+export type { AnalysisLabelResult, AnalysisResult };
 
 interface Rule {
   label: CommentLabel;
@@ -98,8 +89,7 @@ const RULES: Rule[] = [
       /\b(?:100%|completely|absolutely|without\s+(?:a\s+)?(?:doubt|question))\s+(?:true|proven?|confirmed?|certain|real)\b/i,
       /\b(?:mainstream\s+)?(?:media|science|the\s+experts?|doctors?)\s+(?:lie|lies|are\s+lying|won't\s+tell\s+you|hide\s+this)\b/i,
       /\bstudies?\s+(?:prove|show|confirm|demonstrate)\s+(?:that\s+)?(?:vaccines?|immigrants?|(?:a\s+)\w+)\b/i,
-      // Presenting contested comparisons to other countries as established fact
-      /\bin\s+(?:Frankreich|Frankreich|France|den\s+USA|Amerika|England)\s+(?:wurde|wird|hat\s+man|haben\s+sie|ist\s+es)\b/i,
+      /\bin\s+(?:Frankreich|France|den\s+USA|Amerika|England)\s+(?:wurde|wird|hat\s+man|haben\s+sie|ist\s+es)\b/i,
     ],
     rationale:
       'Matches patterns that assert unverified claims as established fact or dismiss expert consensus without evidence',
@@ -108,13 +98,9 @@ const RULES: Rule[] = [
   {
     label: 'dismissive_framing',
     patterns: [
-      // German dismissive terms for critics of restrictive/exclusionary policies
       /\b(?:Schlauberger|Gutmenschen?|Bedenkenträger|Moralapostel|Weltverbesserer|Besserwisser)\b/i,
-      // Framing critics of discrimination as the aggressors (DARVO pattern)
       /\b(?:mobbingartig|regelrecht\s+gemobbt|hergefallen\s+über|Hetze\s+gegen)\b/i,
-      // Delegitimising opposition: "those with their great ideas / clever theories"
       /\b(?:mit\s+(?:ihren|seinen|deinen)\s+(?:tollen|klugen|schlauen|genialen)\s+(?:Ideen|Theorien|Ratschlägen|Vorstellungen))\b/i,
-      // English equivalents
       /\b(?:virtue\s+signal(?:l?ing|ers?)|social\s+justice\s+warrior|woke\s+(?:mob|crowd|brigade)|pearl.clutch(?:ing|ers?))\b/i,
     ],
     rationale:
@@ -134,7 +120,7 @@ const RULES: Rule[] = [
   },
 ];
 
-const HIGH_SEVERITY_LABELS: CommentLabel[] = [
+export const HIGH_SEVERITY_LABELS: readonly CommentLabel[] = [
   'dehumanization',
   'antisemitism',
   'right_extremist_narrative',
@@ -194,9 +180,61 @@ export async function analyzeComment(comment: CommentCandidate): Promise<Analysi
   }
 
   const isHighSeverity = matchedLabels.some((l) => HIGH_SEVERITY_LABELS.includes(l.label));
-  const suggestedResponse = isHighSeverity
-    ? 'Consider reporting this comment to the platform moderators using the platform\'s built-in reporting tool.'
-    : undefined;
+  return {
+    commentId,
+    labels: matchedLabels,
+    suggestedResponse: isHighSeverity
+      ? "Consider reporting this comment to the platform moderators using the platform's built-in reporting tool."
+      : undefined,
+  };
+}
 
-  return { commentId, labels: matchedLabels, suggestedResponse };
+export async function analyzeCommentFull(
+  comment: CommentCandidate,
+  remote?: RemoteAnalyzer,
+): Promise<AnalysisResult> {
+  const local = await analyzeComment(comment);
+  if (!remote) return local;
+
+  let remoteLabels: AnalysisLabelResult[];
+  try {
+    remoteLabels = await remote.analyze(comment.text);
+  } catch (err) {
+    console.warn('[TrollGuard] Remote analysis failed, using local only:', err);
+    return local;
+  }
+
+  if (remoteLabels.length === 0) return local;
+
+  // Merge: build a map starting from local non-trivial labels
+  const merged = new Map<CommentLabel, AnalysisLabelResult>();
+  for (const lr of local.labels) {
+    if (lr.label !== 'not_problematic') merged.set(lr.label, lr);
+  }
+
+  // Remote labels add or upgrade
+  for (const rr of remoteLabels) {
+    const prev = merged.get(rr.label);
+    if (!prev) {
+      merged.set(rr.label, rr);
+    } else if (rr.confidence > prev.confidence) {
+      merged.set(rr.label, {
+        ...rr,
+        rationale: `${prev.rationale} · ${rr.rationale}`,
+        evidence: [...prev.evidence, ...rr.evidence],
+      });
+    }
+  }
+
+  const labels = [...merged.values()];
+  if (labels.length === 0) return local;
+
+  const isHighSeverity = labels.some((l) => HIGH_SEVERITY_LABELS.includes(l.label));
+  return {
+    commentId: comment.id,
+    labels,
+    suggestedResponse: isHighSeverity
+      ? "Consider reporting this comment to the platform moderators using the platform's built-in reporting tool."
+      : undefined,
+  };
 }

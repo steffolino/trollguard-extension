@@ -34,10 +34,7 @@
         flex-shrink: 0;
       }
 
-      .logo {
-        font-size: 17px;
-        line-height: 1;
-      }
+      .logo { font-size: 17px; line-height: 1; }
 
       h1 {
         font-size: 14px;
@@ -53,7 +50,7 @@
         gap: 5px;
         font-size: 11px;
         color: #64748b;
-        max-width: 140px;
+        max-width: 120px;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
@@ -67,6 +64,91 @@
         flex-shrink: 0;
       }
 
+      .settings-toggle {
+        background: none;
+        border: none;
+        color: #475569;
+        cursor: pointer;
+        font-size: 15px;
+        padding: 2px 4px;
+        border-radius: 3px;
+        line-height: 1;
+      }
+
+      .settings-toggle:hover { color: #94a3b8; }
+      .settings-toggle.active { color: #3b82f6; }
+
+      /* Settings panel */
+      .settings-panel {
+        background: #0d1f35;
+        border-bottom: 1px solid #1e3a5f;
+        padding: 12px 14px;
+        flex-shrink: 0;
+      }
+
+      .settings-panel[hidden] { display: none; }
+
+      .settings-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 8px;
+      }
+
+      .settings-row label {
+        font-size: 11px;
+        color: #64748b;
+        width: 110px;
+        flex-shrink: 0;
+      }
+
+      .settings-row select,
+      .settings-row input {
+        flex: 1;
+        background: #1e293b;
+        border: 1px solid #334155;
+        border-radius: 4px;
+        color: #e2e8f0;
+        font-size: 12px;
+        padding: 4px 8px;
+        outline: none;
+      }
+
+      .settings-row select:focus,
+      .settings-row input:focus {
+        border-color: #3b82f6;
+      }
+
+      .settings-actions {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 10px;
+        margin-top: 4px;
+      }
+
+      #settings-status {
+        font-size: 11px;
+        color: #22c55e;
+        flex: 1;
+      }
+
+      #settings-status.error { color: #ef4444; }
+
+      .save-btn {
+        padding: 4px 12px;
+        background: #3b82f6;
+        color: #fff;
+        border: none;
+        border-radius: 4px;
+        font-size: 12px;
+        font-weight: 500;
+        cursor: pointer;
+      }
+
+      .save-btn:hover { background: #2563eb; }
+
+      /* Toolbar */
       .toolbar {
         display: flex;
         align-items: center;
@@ -77,10 +159,7 @@
         min-height: 36px;
       }
 
-      #comment-count {
-        font-size: 11px;
-        color: #64748b;
-      }
+      #comment-count { font-size: 11px; color: #64748b; }
 
       .scan-btn {
         padding: 4px 11px;
@@ -95,43 +174,27 @@
         white-space: nowrap;
       }
 
-      .scan-btn:hover {
-        background: #2563eb;
-      }
+      .scan-btn:hover { background: #2563eb; }
+      .scan-btn:disabled { background: #1e3a5f; color: #4a7abf; cursor: not-allowed; }
 
-      .scan-btn:disabled {
-        background: #1e3a5f;
-        color: #4a7abf;
-        cursor: not-allowed;
-      }
-
+      /* Results */
       #results {
         flex: 1;
         overflow-y: auto;
         overflow-x: hidden;
       }
 
-      #results::-webkit-scrollbar {
-        width: 4px;
-      }
-
-      #results::-webkit-scrollbar-track {
-        background: transparent;
-      }
-
-      #results::-webkit-scrollbar-thumb {
-        background: #334155;
-        border-radius: 2px;
-      }
+      #results::-webkit-scrollbar { width: 4px; }
+      #results::-webkit-scrollbar-track { background: transparent; }
+      #results::-webkit-scrollbar-thumb { background: #334155; border-radius: 2px; }
 
       .result-item {
         padding: 10px 14px;
         border-bottom: 1px solid #1e293b;
       }
 
-      .result-item:last-child {
-        border-bottom: none;
-      }
+      .result-item:last-child { border-bottom: none; }
+      .result-item:hover { background: #1e293b44; }
 
       .result-header {
         display: flex;
@@ -162,9 +225,7 @@
         transition: background 0.1s;
       }
 
-      .goto-btn:hover {
-        background: #1e3a5f;
-      }
+      .goto-btn:hover { background: #1e3a5f; }
 
       .result-text {
         font-size: 12px;
@@ -173,11 +234,7 @@
         margin-bottom: 6px;
       }
 
-      .result-labels {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 4px;
-      }
+      .result-labels { display: flex; flex-wrap: wrap; gap: 4px; }
 
       .badge {
         font-size: 10px;
@@ -197,18 +254,13 @@
         line-height: 1.6;
       }
 
-      .loading::before {
-        content: '⋯ ';
-      }
-
       .footer {
         padding: 7px 14px;
         font-size: 10px;
-        color: #1e3a5f;
+        color: #475569;
         text-align: center;
         border-top: 1px solid #1e293b;
         flex-shrink: 0;
-        color: #475569;
       }
     </style>
   </head>
@@ -219,6 +271,31 @@
       <div class="status-pill">
         <div class="dot" id="status-dot"></div>
         <span id="status-text">Loading…</span>
+      </div>
+      <button class="settings-toggle" id="settings-toggle" title="Settings">⚙</button>
+    </div>
+
+    <div class="settings-panel" id="settings-panel" hidden>
+      <div class="settings-row">
+        <label for="provider-select">Remote analysis</label>
+        <select id="provider-select">
+          <option value="none">Local rules only</option>
+          <option value="perspective">Perspective API</option>
+        </select>
+      </div>
+      <div class="settings-row" id="api-key-row" hidden>
+        <label for="api-key-input">API key</label>
+        <input
+          type="password"
+          id="api-key-input"
+          placeholder="AIza…"
+          autocomplete="off"
+          spellcheck="false"
+        />
+      </div>
+      <div class="settings-actions">
+        <span id="settings-status"></span>
+        <button class="save-btn" id="settings-save">Save</button>
       </div>
     </div>
 
@@ -231,7 +308,9 @@
       <div class="loading">Scanning…</div>
     </div>
 
-    <div class="footer">Analysis runs entirely locally · No data leaves your browser</div>
+    <div class="footer" id="footer">
+      Analysis runs entirely locally · No data leaves your browser
+    </div>
 
     <script type="module" src="./index.ts"></script>
   </body>

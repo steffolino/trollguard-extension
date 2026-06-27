@@ -1,11 +1,14 @@
-import { analyzeComment } from '../core/analysis';
+import { analyzeCommentFull } from '../core/analysis';
 import type { CommentSummary, ContentResponse } from '../shared/messages';
 import type { CommentCandidate } from '../core/comment';
 import type { PlatformPlugin } from '../core/platform';
+import type { RemoteAnalyzer } from '../core/remote';
 import { GenericPlatform } from '../platforms/generic';
 import { MdrPlatform } from '../platforms/mdr';
 import { YoutubePlatform } from '../platforms/youtube';
 import { renderButton, renderResult } from './overlay';
+import { getSettings } from '../shared/settings';
+import { PerspectiveAnalyzer } from '../analyzers/perspective';
 
 const PLATFORMS: PlatformPlugin[] = [
   new MdrPlatform(),
@@ -15,6 +18,20 @@ const PLATFORMS: PlatformPlugin[] = [
 
 const commentRegistry = new Map<string, CommentCandidate>();
 const resultCache = new Map<string, CommentSummary>();
+let remoteAnalyzer: RemoteAnalyzer | undefined;
+
+async function refreshRemoteAnalyzer(): Promise<void> {
+  const settings = await getSettings();
+  if (settings.remoteProvider === 'perspective' && settings.remoteApiKey) {
+    remoteAnalyzer = new PerspectiveAnalyzer(settings.remoteApiKey);
+  } else {
+    remoteAnalyzer = undefined;
+  }
+}
+
+chrome.storage.onChanged.addListener(() => {
+  void refreshRemoteAnalyzer();
+});
 
 function getActivePlatform(): PlatformPlugin {
   const url = new URL(window.location.href);
@@ -33,7 +50,7 @@ function attachButton(comment: CommentCandidate): void {
     btn.disabled = true;
     btn.textContent = 'Analyzing…';
 
-    analyzeComment(comment)
+    analyzeCommentFull(comment, remoteAnalyzer)
       .then((result) => {
         renderResult(result, wrapper);
         btn.textContent = 'Re-analyze';
@@ -56,7 +73,7 @@ function scan(): void {
   for (const comment of comments) {
     attachButton(comment);
     if (!resultCache.has(comment.id)) {
-      void analyzeComment(comment).then((result) => {
+      void analyzeCommentFull(comment, remoteAnalyzer).then((result) => {
         resultCache.set(comment.id, {
           id: comment.id,
           text: comment.text.slice(0, 150),
@@ -81,7 +98,7 @@ async function scanAndAnalyze(): Promise<CommentSummary[]> {
   const uncached = comments.filter((c) => !resultCache.has(c.id));
   await Promise.all(
     uncached.map(async (comment) => {
-      const result = await analyzeComment(comment);
+      const result = await analyzeCommentFull(comment, remoteAnalyzer);
       resultCache.set(comment.id, {
         id: comment.id,
         text: comment.text.slice(0, 150),
@@ -130,18 +147,18 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 });
 
 function observeShadowRoots(onMutation: () => void): void {
-  // Shadow DOM mutations (e.g. MDR/Engagently lazy-loading comments) are invisible
-  // to a document.body MutationObserver — attach a separate observer to each shadow root.
   document.querySelectorAll<HTMLElement>('*').forEach((el) => {
     if (el.shadowRoot) {
-      const obs = new MutationObserver(onMutation);
-      obs.observe(el.shadowRoot, { childList: true, subtree: true });
+      new MutationObserver(onMutation).observe(el.shadowRoot, {
+        childList: true,
+        subtree: true,
+      });
     }
   });
 }
 
 function init(): void {
-  scan();
+  void refreshRemoteAnalyzer().then(() => scan());
 
   let debounceTimer: ReturnType<typeof setTimeout> | undefined;
   const onMutation = (): void => {

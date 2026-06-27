@@ -4,6 +4,7 @@
   "version": "0.1.0",
   "description": "Locally analyze visible comments for potentially problematic content. Results are suggestions, not judgments.",
   "permissions": ["activeTab", "storage"],
+  "host_permissions": ["https://commentanalyzer.googleapis.com/*"],
   "action": {
     "default_popup": "popup/index.html",
     "default_title": "TrollGuard",

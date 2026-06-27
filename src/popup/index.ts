@@ -1,5 +1,7 @@
 import browser from 'webextension-polyfill';
 import type { CommentSummary, ContentResponse } from '../shared/messages';
+import { getSettings, saveSettings } from '../shared/settings';
+import type { RemoteProvider } from '../shared/settings';
 
 const LABEL_COLOR: Record<string, string> = {
   not_problematic: '#22c55e',
@@ -14,6 +16,69 @@ const LABEL_COLOR: Record<string, string> = {
   coordinated_pattern: '#6366f1',
   dismissive_framing: '#f97316',
 };
+
+// ── Settings panel ────────────────────────────────────────────────────────────
+
+function initSettings(): void {
+  const toggle = document.getElementById('settings-toggle')!;
+  const panel = document.getElementById('settings-panel')!;
+  const providerSelect = document.getElementById('provider-select') as HTMLSelectElement;
+  const apiKeyRow = document.getElementById('api-key-row')!;
+  const apiKeyInput = document.getElementById('api-key-input') as HTMLInputElement;
+  const saveBtn = document.getElementById('settings-save')!;
+  const statusEl = document.getElementById('settings-status')!;
+  const footer = document.getElementById('footer')!;
+
+  function updateApiKeyRowVisibility(): void {
+    apiKeyRow.hidden = providerSelect.value === 'none';
+  }
+
+  // Load saved settings into UI
+  void getSettings().then((s) => {
+    providerSelect.value = s.remoteProvider;
+    apiKeyInput.value = s.remoteApiKey;
+    updateApiKeyRowVisibility();
+    updateFooter(s.remoteProvider, footer);
+  });
+
+  toggle.addEventListener('click', () => {
+    const hidden = panel.hasAttribute('hidden');
+    if (hidden) {
+      panel.removeAttribute('hidden');
+      toggle.classList.add('active');
+    } else {
+      panel.setAttribute('hidden', '');
+      toggle.classList.remove('active');
+    }
+  });
+
+  providerSelect.addEventListener('change', updateApiKeyRowVisibility);
+
+  saveBtn.addEventListener('click', () => {
+    const provider = providerSelect.value as RemoteProvider;
+    const apiKey = apiKeyInput.value.trim();
+
+    void saveSettings({ remoteProvider: provider, remoteApiKey: apiKey }).then(() => {
+      statusEl.textContent = 'Saved';
+      statusEl.className = '';
+      updateFooter(provider, footer);
+      setTimeout(() => {
+        statusEl.textContent = '';
+        panel.setAttribute('hidden', '');
+        toggle.classList.remove('active');
+      }, 1200);
+    });
+  });
+}
+
+function updateFooter(provider: RemoteProvider, footer: HTMLElement): void {
+  footer.textContent =
+    provider === 'none'
+      ? 'Analysis runs entirely locally · No data leaves your browser'
+      : 'Local rules + Perspective API · Comment text is sent to Google';
+}
+
+// ── Results ───────────────────────────────────────────────────────────────────
 
 async function getCurrentTab(): Promise<browser.Tabs.Tab | undefined> {
   const tabs = await browser.tabs.query({ active: true, currentWindow: true });
@@ -77,8 +142,8 @@ function renderResults(results: CommentSummary[], tabId: number): void {
 
     const textEl = document.createElement('div');
     textEl.className = 'result-text';
-    const excerpt = summary.text.length > 110 ? summary.text.slice(0, 110) + '…' : summary.text;
-    textEl.textContent = excerpt;
+    textEl.textContent =
+      summary.text.length > 110 ? summary.text.slice(0, 110) + '…' : summary.text;
     item.appendChild(textEl);
 
     const labelsEl = document.createElement('div');
@@ -132,6 +197,8 @@ async function runScan(): Promise<void> {
   }
 }
 
+// ── Init ──────────────────────────────────────────────────────────────────────
+
 async function init(): Promise<void> {
   const statusDot = document.getElementById('status-dot')!;
   const statusText = document.getElementById('status-text')!;
@@ -145,6 +212,7 @@ async function init(): Promise<void> {
     statusText.textContent = 'Error';
   }
 
+  initSettings();
   document.getElementById('scan-btn')!.addEventListener('click', () => void runScan());
   void runScan();
 }
