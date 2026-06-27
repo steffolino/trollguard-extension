@@ -1,3 +1,4 @@
+import browser from 'webextension-polyfill';
 import { analyzeComment } from '../core/analysis';
 import type { CommentCandidate } from '../core/comment';
 import type { PlatformPlugin } from '../core/platform';
@@ -63,6 +64,18 @@ function init(): void {
 
   observer.observe(document.body, { childList: true, subtree: true });
 }
+
+browser.runtime.onMessage.addListener((message: unknown) => {
+  if (
+    message !== null &&
+    typeof message === 'object' &&
+    (message as Record<string, unknown>)['type'] === 'SCAN_REQUEST'
+  ) {
+    scan();
+    return Promise.resolve({ type: 'SCAN_ACK' });
+  }
+  return undefined;
+});
 
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', init);
