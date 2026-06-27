@@ -1,19 +1,6 @@
 import type { PlatformPlugin } from '../core/platform';
 import type { CommentCandidate } from '../core/comment';
 
-const MDR_SELECTORS = [
-  '.comment__text',
-  '.comment-body',
-  '.comment__body',
-  '[class*="Comment__text"]',
-  '[class*="comment__content"]',
-  '.article-comments__item',
-  '.comments-list__item',
-  '[data-testid*="comment"]',
-  '.user-comment',
-  '.comment',
-];
-
 const MIN_TEXT_LEN = 20;
 const MAX_TEXT_LEN = 3000;
 
@@ -37,22 +24,43 @@ export class MdrPlatform implements PlatformPlugin {
     const results: CommentCandidate[] = [];
     let index = 0;
 
-    for (const selector of MDR_SELECTORS) {
-      document.querySelectorAll<HTMLElement>(selector).forEach((el) => {
-        const text = el.innerText?.trim() ?? '';
-        if (text.length < MIN_TEXT_LEN || text.length > MAX_TEXT_LEN) return;
+    // MDR uses Engagently (<egy-discussion>) with an open Shadow DOM.
+    // Standard querySelectorAll cannot pierce shadow roots — access shadowRoot directly.
+    const widgets = document.querySelectorAll<HTMLElement>('egy-discussion');
+
+    for (const widget of widgets) {
+      const shadow = widget.shadowRoot;
+      if (!shadow) continue;
+
+      const textSpans = shadow.querySelectorAll<HTMLElement>(
+        'span[part="commentary__content-text"]',
+      );
+
+      for (const span of textSpans) {
+        const text = span.innerText?.trim() ?? '';
+        if (text.length < MIN_TEXT_LEN || text.length > MAX_TEXT_LEN) continue;
 
         const hash = djb2Hash(text);
-        if (seen.has(hash)) return;
+        if (seen.has(hash)) continue;
         seen.add(hash);
+
+        // Anchor to the wrapping commentary div so the button lands after the whole comment block
+        const commentaryEl =
+          span.closest<HTMLElement>('div[data-testid^="commentary-"]') ?? span;
+
+        const authorEl = commentaryEl.querySelector<HTMLElement>(
+          'a[part="commentary-author__name"]',
+        );
+        const author = authorEl?.innerText?.trim() || undefined;
 
         results.push({
           id: `mdr-${hash}-${index++}`,
           text,
-          element: el,
+          author,
+          element: commentaryEl,
           sourceUrl: window.location.href,
         });
-      });
+      }
     }
 
     if (results.length === 0) {
