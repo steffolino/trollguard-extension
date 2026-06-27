@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TrollGuard</title>
+    <style>
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        width: 300px;
+        min-height: 200px;
+        font-family: system-ui, -apple-system, sans-serif;
+        font-size: 13px;
+        background: #0f172a;
+        color: #e2e8f0;
+        padding: 16px;
+      }
+
+      .header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 14px;
+        padding-bottom: 12px;
+        border-bottom: 1px solid #1e293b;
+      }
+
+      .logo {
+        width: 24px;
+        height: 24px;
+        background: #3b82f6;
+        border-radius: 5px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+        flex-shrink: 0;
+      }
+
+      h1 {
+        font-size: 15px;
+        font-weight: 700;
+        color: #f1f5f9;
+        letter-spacing: -0.01em;
+      }
+
+      .status-row {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-bottom: 10px;
+      }
+
+      .dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: #22c55e;
+        flex-shrink: 0;
+      }
+
+      .status-label {
+        font-size: 12px;
+        color: #94a3b8;
+      }
+
+      .scan-info {
+        background: #1e293b;
+        border-radius: 5px;
+        padding: 8px 10px;
+        font-size: 12px;
+        color: #94a3b8;
+        margin-bottom: 12px;
+        min-height: 36px;
+      }
+
+      #scan-status {
+        color: #cbd5e1;
+      }
+
+      button {
+        width: 100%;
+        padding: 8px 12px;
+        background: #3b82f6;
+        color: #fff;
+        border: none;
+        border-radius: 5px;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: background 0.15s;
+        margin-bottom: 12px;
+      }
+
+      button:hover {
+        background: #2563eb;
+      }
+
+      button:disabled {
+        background: #334155;
+        color: #64748b;
+        cursor: not-allowed;
+      }
+
+      .note {
+        font-size: 11px;
+        color: #475569;
+        text-align: center;
+        font-style: italic;
+        line-height: 1.5;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="header">
+      <div class="logo">🛡</div>
+      <h1>TrollGuard</h1>
+    </div>
+
+    <div class="status-row">
+      <div class="dot" id="status-dot"></div>
+      <span class="status-label" id="status-text">Extension active</span>
+    </div>
+
+    <div class="scan-info">
+      <span id="scan-status">Loading page info…</span>
+    </div>
+
+    <button id="scan-btn">Scan page again</button>
+
+    <p class="note">Analysis runs entirely locally in the MVP.<br />No data leaves your browser.</p>
+
+    <script type="module" src="./index.ts"></script>
+  </body>
+</html>

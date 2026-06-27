@@ -1,0 +1,32 @@
+{
+  "manifest_version": 3,
+  "name": "TrollGuard",
+  "version": "0.1.0",
+  "description": "Locally analyze visible comments for potentially problematic content. Results are suggestions, not judgments.",
+  "permissions": ["activeTab", "storage"],
+  "action": {
+    "default_popup": "popup/index.html",
+    "default_title": "TrollGuard",
+    "default_icon": {
+      "16": "icons/icon16.svg",
+      "48": "icons/icon48.svg",
+      "128": "icons/icon128.svg"
+    }
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "icons": {
+    "16": "icons/icon16.svg",
+    "48": "icons/icon48.svg",
+    "128": "icons/icon128.svg"
+  }
+}
