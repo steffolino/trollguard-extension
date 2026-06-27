@@ -1,4 +1,5 @@
 import { analyzeComment } from '../core/analysis';
+import type { CommentSummary, ContentResponse } from '../shared/messages';
 import type { CommentCandidate } from '../core/comment';
 import type { PlatformPlugin } from '../core/platform';
 import { GenericPlatform } from '../platforms/generic';
@@ -9,8 +10,10 @@ import { renderButton, renderResult } from './overlay';
 const PLATFORMS: PlatformPlugin[] = [
   new MdrPlatform(),
   new YoutubePlatform(),
-  new GenericPlatform(), // fallback — always matches
+  new GenericPlatform(),
 ];
+
+const commentRegistry = new Map<string, CommentCandidate>();
 
 function getActivePlatform(): PlatformPlugin {
   const url = new URL(window.location.href);
@@ -18,6 +21,7 @@ function getActivePlatform(): PlatformPlugin {
 }
 
 function attachButton(comment: CommentCandidate): void {
+  commentRegistry.set(comment.id, comment);
   if (comment.element.querySelector('.tg-check-btn')) return;
 
   const wrapper = document.createElement('div');
@@ -48,13 +52,67 @@ function attachButton(comment: CommentCandidate): void {
 function scan(): void {
   const platform = getActivePlatform();
   const comments = platform.findComments();
+  console.log(`[TrollGuard] ${platform.id}: ${comments.length} comment(s) detected`);
   comments.forEach(attachButton);
 }
+
+async function scanAndAnalyze(): Promise<CommentSummary[]> {
+  const platform = getActivePlatform();
+  const comments = platform.findComments();
+  console.log(`[TrollGuard] ${platform.id}: analyzing ${comments.length} comment(s)`);
+  comments.forEach(attachButton);
+
+  return Promise.all(
+    comments.map(async (comment): Promise<CommentSummary> => {
+      const result = await analyzeComment(comment);
+      return {
+        id: comment.id,
+        text: comment.text.slice(0, 150),
+        author: comment.author,
+        result,
+      };
+    }),
+  );
+}
+
+function scrollToComment(commentId: string): void {
+  const comment = commentRegistry.get(commentId);
+  if (!comment) return;
+  comment.element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  const el = comment.element;
+  const prevOutline = el.style.outline;
+  el.style.outline = '2px solid #3b82f6';
+  setTimeout(() => {
+    el.style.outline = prevOutline;
+  }, 2000);
+}
+
+chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  if (message === null || typeof message !== 'object') return undefined;
+  const msg = message as Record<string, unknown>;
+
+  if (msg['type'] === 'SCAN_REQUEST') {
+    scanAndAnalyze()
+      .then((results) => {
+        sendResponse({ type: 'SCAN_RESULTS', results } satisfies ContentResponse);
+      })
+      .catch(() => {
+        sendResponse({ type: 'SCAN_RESULTS', results: [] } satisfies ContentResponse);
+      });
+    return true;
+  }
+
+  if (msg['type'] === 'SCROLL_TO_COMMENT' && typeof msg['commentId'] === 'string') {
+    scrollToComment(msg['commentId']);
+    return undefined;
+  }
+
+  return undefined;
+});
 
 function init(): void {
   scan();
 
-  // Re-scan when the DOM updates (handles lazy-loaded comments)
   let debounceTimer: ReturnType<typeof setTimeout> | undefined;
   const observer = new MutationObserver(() => {
     clearTimeout(debounceTimer);
@@ -63,18 +121,6 @@ function init(): void {
 
   observer.observe(document.body, { childList: true, subtree: true });
 }
-
-chrome.runtime.onMessage.addListener((message: unknown) => {
-  if (
-    message !== null &&
-    typeof message === 'object' &&
-    (message as Record<string, unknown>)['type'] === 'SCAN_REQUEST'
-  ) {
-    scan();
-    return Promise.resolve({ type: 'SCAN_ACK' });
-  }
-  return undefined;
-});
 
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', init);

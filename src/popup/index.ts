@@ -1,61 +1,150 @@
 import browser from 'webextension-polyfill';
+import type { CommentSummary, ContentResponse } from '../shared/messages';
 
-const scanStatusEl = document.getElementById('scan-status') as HTMLElement;
-const scanBtn = document.getElementById('scan-btn') as HTMLButtonElement;
-const statusDot = document.getElementById('status-dot') as HTMLElement;
-const statusText = document.getElementById('status-text') as HTMLElement;
-
-function setStatus(active: boolean): void {
-  statusDot.style.background = active ? '#22c55e' : '#ef4444';
-  statusText.textContent = active ? 'Extension active' : 'Extension error';
-}
+const LABEL_COLOR: Record<string, string> = {
+  not_problematic: '#22c55e',
+  toxicity: '#ef4444',
+  insult: '#f97316',
+  dehumanization: '#dc2626',
+  racism: '#dc2626',
+  antisemitism: '#dc2626',
+  conspiracy_narrative: '#a855f7',
+  false_or_unverified_claim: '#f59e0b',
+  right_extremist_narrative: '#dc2626',
+  coordinated_pattern: '#6366f1',
+};
 
 async function getCurrentTab(): Promise<browser.Tabs.Tab | undefined> {
   const tabs = await browser.tabs.query({ active: true, currentWindow: true });
   return tabs[0];
 }
 
-async function triggerScan(): Promise<void> {
+function scrollToComment(tabId: number, commentId: string): void {
+  void browser.tabs.sendMessage(tabId, { type: 'SCROLL_TO_COMMENT', commentId });
+}
+
+function renderResults(results: CommentSummary[], tabId: number): void {
+  const container = document.getElementById('results')!;
+  const countEl = document.getElementById('comment-count')!;
+
+  const flagged = results.filter((r) =>
+    r.result.labels.some((l) => l.label !== 'not_problematic'),
+  );
+
+  if (results.length === 0) {
+    countEl.textContent = '';
+    container.innerHTML =
+      '<div class="empty">No comments detected.<br>If comments exist, try scrolling them into view first, then scan again.</div>';
+    return;
+  }
+
+  countEl.textContent = `${results.length} comment${results.length !== 1 ? 's' : ''} · ${flagged.length} flagged`;
+
+  if (flagged.length === 0) {
+    container.innerHTML =
+      '<div class="empty">No potentially problematic content detected in the visible comments.</div>';
+    return;
+  }
+
+  container.innerHTML = '';
+
+  for (const summary of flagged) {
+    const labels = summary.result.labels.filter((l) => l.label !== 'not_problematic');
+
+    const item = document.createElement('div');
+    item.className = 'result-item';
+
+    const header = document.createElement('div');
+    header.className = 'result-header';
+
+    const authorEl = document.createElement('span');
+    authorEl.className = 'result-author';
+    authorEl.textContent = summary.author ?? 'Anonymous';
+
+    const gotoBtn = document.createElement('button');
+    gotoBtn.className = 'goto-btn';
+    gotoBtn.textContent = '↗ Go to';
+    gotoBtn.addEventListener('click', () => {
+      scrollToComment(tabId, summary.id);
+      window.close();
+    });
+
+    header.appendChild(authorEl);
+    header.appendChild(gotoBtn);
+    item.appendChild(header);
+
+    const textEl = document.createElement('div');
+    textEl.className = 'result-text';
+    const excerpt = summary.text.length > 110 ? summary.text.slice(0, 110) + '…' : summary.text;
+    textEl.textContent = excerpt;
+    item.appendChild(textEl);
+
+    const labelsEl = document.createElement('div');
+    labelsEl.className = 'result-labels';
+
+    for (const lr of labels) {
+      const color = LABEL_COLOR[lr.label] ?? '#64748b';
+      const badge = document.createElement('span');
+      badge.className = 'badge';
+      badge.style.cssText = `background:${color}22;color:${color};border:1px solid ${color}44`;
+      badge.textContent = `${lr.label.replace(/_/g, ' ')} ${Math.round(lr.confidence * 100)}%`;
+      labelsEl.appendChild(badge);
+    }
+
+    item.appendChild(labelsEl);
+    container.appendChild(item);
+  }
+}
+
+async function runScan(): Promise<void> {
+  const scanBtn = document.getElementById('scan-btn') as HTMLButtonElement;
+  const container = document.getElementById('results')!;
+  const countEl = document.getElementById('comment-count')!;
+
   const tab = await getCurrentTab();
   if (!tab?.id) {
-    scanStatusEl.textContent = 'No active tab found.';
+    countEl.textContent = '';
+    container.innerHTML = '<div class="empty">No active tab found.</div>';
     return;
   }
 
   scanBtn.disabled = true;
   scanBtn.textContent = 'Scanning…';
-  scanStatusEl.textContent = 'Requesting scan…';
+  container.innerHTML = '<div class="loading">Analyzing comments…</div>';
 
   try {
-    await browser.tabs.sendMessage(tab.id, { type: 'SCAN_REQUEST' });
-    scanStatusEl.textContent = 'Scan triggered. Check buttons on the page.';
+    const response = (await browser.tabs.sendMessage(tab.id, {
+      type: 'SCAN_REQUEST',
+    })) as ContentResponse;
+
+    if (response.type === 'SCAN_RESULTS') {
+      renderResults(response.results, tab.id);
+    }
   } catch {
-    scanStatusEl.textContent =
-      'Could not reach content script. Try reloading the page.';
+    countEl.textContent = '';
+    container.innerHTML =
+      '<div class="empty">Could not reach the page.<br>Reload the page and try again.</div>';
   } finally {
     scanBtn.disabled = false;
-    scanBtn.textContent = 'Scan page again';
+    scanBtn.textContent = 'Scan again';
   }
 }
 
 async function init(): Promise<void> {
+  const statusDot = document.getElementById('status-dot')!;
+  const statusText = document.getElementById('status-text')!;
+
   try {
     const tab = await getCurrentTab();
-    if (tab?.url) {
-      const url = new URL(tab.url);
-      scanStatusEl.textContent = `Current page: ${url.hostname}`;
-    } else {
-      scanStatusEl.textContent = 'Navigate to a page with comments to start.';
-    }
-    setStatus(true);
+    statusText.textContent = tab?.url ? new URL(tab.url).hostname : 'Unknown';
+    statusDot.style.background = '#22c55e';
   } catch {
-    setStatus(false);
-    scanStatusEl.textContent = 'Unable to read tab info.';
+    statusDot.style.background = '#ef4444';
+    statusText.textContent = 'Error';
   }
-}
 
-scanBtn.addEventListener('click', () => {
-  void triggerScan();
-});
+  document.getElementById('scan-btn')!.addEventListener('click', () => void runScan());
+  void runScan();
+}
 
 void init();

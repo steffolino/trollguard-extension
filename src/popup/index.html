@@ -14,107 +14,201 @@
       }
 
       body {
-        width: 300px;
-        min-height: 200px;
+        width: 380px;
+        max-height: 560px;
         font-family: system-ui, -apple-system, sans-serif;
         font-size: 13px;
         background: #0f172a;
         color: #e2e8f0;
-        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
       }
 
       .header {
         display: flex;
         align-items: center;
         gap: 8px;
-        margin-bottom: 14px;
-        padding-bottom: 12px;
+        padding: 11px 14px 10px;
         border-bottom: 1px solid #1e293b;
-      }
-
-      .logo {
-        width: 24px;
-        height: 24px;
-        background: #3b82f6;
-        border-radius: 5px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 14px;
         flex-shrink: 0;
       }
 
+      .logo {
+        font-size: 17px;
+        line-height: 1;
+      }
+
       h1 {
-        font-size: 15px;
+        font-size: 14px;
         font-weight: 700;
         color: #f1f5f9;
+        flex: 1;
         letter-spacing: -0.01em;
       }
 
-      .status-row {
+      .status-pill {
         display: flex;
         align-items: center;
-        gap: 6px;
-        margin-bottom: 10px;
+        gap: 5px;
+        font-size: 11px;
+        color: #64748b;
+        max-width: 140px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
       }
 
       .dot {
-        width: 7px;
-        height: 7px;
+        width: 6px;
+        height: 6px;
         border-radius: 50%;
         background: #22c55e;
         flex-shrink: 0;
       }
 
-      .status-label {
-        font-size: 12px;
-        color: #94a3b8;
-      }
-
-      .scan-info {
-        background: #1e293b;
-        border-radius: 5px;
-        padding: 8px 10px;
-        font-size: 12px;
-        color: #94a3b8;
-        margin-bottom: 12px;
+      .toolbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 7px 14px;
+        border-bottom: 1px solid #1e293b;
+        flex-shrink: 0;
         min-height: 36px;
       }
 
-      #scan-status {
-        color: #cbd5e1;
+      #comment-count {
+        font-size: 11px;
+        color: #64748b;
       }
 
-      button {
-        width: 100%;
-        padding: 8px 12px;
+      .scan-btn {
+        padding: 4px 11px;
         background: #3b82f6;
         color: #fff;
         border: none;
-        border-radius: 5px;
-        font-size: 13px;
+        border-radius: 4px;
+        font-size: 12px;
         font-weight: 500;
         cursor: pointer;
         transition: background 0.15s;
-        margin-bottom: 12px;
+        white-space: nowrap;
       }
 
-      button:hover {
+      .scan-btn:hover {
         background: #2563eb;
       }
 
-      button:disabled {
-        background: #334155;
-        color: #64748b;
+      .scan-btn:disabled {
+        background: #1e3a5f;
+        color: #4a7abf;
         cursor: not-allowed;
       }
 
-      .note {
+      #results {
+        flex: 1;
+        overflow-y: auto;
+        overflow-x: hidden;
+      }
+
+      #results::-webkit-scrollbar {
+        width: 4px;
+      }
+
+      #results::-webkit-scrollbar-track {
+        background: transparent;
+      }
+
+      #results::-webkit-scrollbar-thumb {
+        background: #334155;
+        border-radius: 2px;
+      }
+
+      .result-item {
+        padding: 10px 14px;
+        border-bottom: 1px solid #1e293b;
+      }
+
+      .result-item:last-child {
+        border-bottom: none;
+      }
+
+      .result-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 4px;
+        gap: 8px;
+      }
+
+      .result-author {
         font-size: 11px;
+        font-weight: 600;
+        color: #94a3b8;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .goto-btn {
+        padding: 2px 8px;
+        background: transparent;
+        color: #3b82f6;
+        border: 1px solid #1e3a5f;
+        border-radius: 3px;
+        font-size: 11px;
+        cursor: pointer;
+        flex-shrink: 0;
+        transition: background 0.1s;
+      }
+
+      .goto-btn:hover {
+        background: #1e3a5f;
+      }
+
+      .result-text {
+        font-size: 12px;
+        color: #94a3b8;
+        line-height: 1.45;
+        margin-bottom: 6px;
+      }
+
+      .result-labels {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+      }
+
+      .badge {
+        font-size: 10px;
+        padding: 1px 6px;
+        border-radius: 3px;
+        font-weight: 600;
+        white-space: nowrap;
+        letter-spacing: 0.02em;
+      }
+
+      .empty,
+      .loading {
+        padding: 24px 18px;
+        font-size: 12px;
         color: #475569;
         text-align: center;
-        font-style: italic;
-        line-height: 1.5;
+        line-height: 1.6;
+      }
+
+      .loading::before {
+        content: '⋯ ';
+      }
+
+      .footer {
+        padding: 7px 14px;
+        font-size: 10px;
+        color: #1e3a5f;
+        text-align: center;
+        border-top: 1px solid #1e293b;
+        flex-shrink: 0;
+        color: #475569;
       }
     </style>
   </head>
@@ -122,20 +216,22 @@
     <div class="header">
       <div class="logo">🛡</div>
       <h1>TrollGuard</h1>
+      <div class="status-pill">
+        <div class="dot" id="status-dot"></div>
+        <span id="status-text">Loading…</span>
+      </div>
     </div>
 
-    <div class="status-row">
-      <div class="dot" id="status-dot"></div>
-      <span class="status-label" id="status-text">Extension active</span>
+    <div class="toolbar">
+      <span id="comment-count"></span>
+      <button class="scan-btn" id="scan-btn">Scan page</button>
     </div>
 
-    <div class="scan-info">
-      <span id="scan-status">Loading page info…</span>
+    <div id="results">
+      <div class="loading">Scanning…</div>
     </div>
 
-    <button id="scan-btn">Scan page again</button>
-
-    <p class="note">Analysis runs entirely locally in the MVP.<br />No data leaves your browser.</p>
+    <div class="footer">Analysis runs entirely locally · No data leaves your browser</div>
 
     <script type="module" src="./index.ts"></script>
   </body>
