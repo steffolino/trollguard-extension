@@ -13,6 +13,7 @@ const LABEL_COLOR: Record<CommentLabel, string> = {
   false_or_unverified_claim: '#f59e0b',
   right_extremist_narrative: '#dc2626',
   coordinated_pattern: '#6366f1',
+  dismissive_framing: '#f97316',
 };
 
 const BASE_STYLES = {

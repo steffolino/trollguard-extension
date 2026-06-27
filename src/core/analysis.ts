@@ -98,10 +98,28 @@ const RULES: Rule[] = [
       /\b(?:100%|completely|absolutely|without\s+(?:a\s+)?(?:doubt|question))\s+(?:true|proven?|confirmed?|certain|real)\b/i,
       /\b(?:mainstream\s+)?(?:media|science|the\s+experts?|doctors?)\s+(?:lie|lies|are\s+lying|won't\s+tell\s+you|hide\s+this)\b/i,
       /\bstudies?\s+(?:prove|show|confirm|demonstrate)\s+(?:that\s+)?(?:vaccines?|immigrants?|(?:a\s+)\w+)\b/i,
+      // Presenting contested comparisons to other countries as established fact
+      /\bin\s+(?:Frankreich|Frankreich|France|den\s+USA|Amerika|England)\s+(?:wurde|wird|hat\s+man|haben\s+sie|ist\s+es)\b/i,
     ],
     rationale:
       'Matches patterns that assert unverified claims as established fact or dismiss expert consensus without evidence',
     confidenceBase: 0.55,
+  },
+  {
+    label: 'dismissive_framing',
+    patterns: [
+      // German dismissive terms for critics of restrictive/exclusionary policies
+      /\b(?:Schlauberger|Gutmenschen?|Bedenkenträger|Moralapostel|Weltverbesserer|Besserwisser)\b/i,
+      // Framing critics of discrimination as the aggressors (DARVO pattern)
+      /\b(?:mobbingartig|regelrecht\s+gemobbt|hergefallen\s+über|Hetze\s+gegen)\b/i,
+      // Delegitimising opposition: "those with their great ideas / clever theories"
+      /\b(?:mit\s+(?:ihren|seinen|deinen)\s+(?:tollen|klugen|schlauen|genialen)\s+(?:Ideen|Theorien|Ratschlägen|Vorstellungen))\b/i,
+      // English equivalents
+      /\b(?:virtue\s+signal(?:l?ing|ers?)|social\s+justice\s+warrior|woke\s+(?:mob|crowd|brigade)|pearl.clutch(?:ing|ers?))\b/i,
+    ],
+    rationale:
+      'Matches vocabulary used to delegitimise critics of exclusionary or restrictive policies, often by portraying opponents as naive, aggressive, or incompetent',
+    confidenceBase: 0.58,
   },
   {
     label: 'right_extremist_narrative',
