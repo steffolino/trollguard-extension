@@ -1,4 +1,3 @@
-import browser from 'webextension-polyfill';
 import { analyzeComment } from '../core/analysis';
 import type { CommentCandidate } from '../core/comment';
 import type { PlatformPlugin } from '../core/platform';
@@ -65,7 +64,7 @@ function init(): void {
   observer.observe(document.body, { childList: true, subtree: true });
 }
 
-browser.runtime.onMessage.addListener((message: unknown) => {
+chrome.runtime.onMessage.addListener((message: unknown) => {
   if (
     message !== null &&
     typeof message === 'object' &&
